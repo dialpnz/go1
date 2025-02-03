@@ -38,9 +38,11 @@ func GetMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Отправляем JSON-ответ
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(requests)
+	response := fmt.Sprintf("Все сообщения: %+v", requests)
+
+	// Отправляем текстовый ответ
+	w.Header().Set("Content-Type", "text/plain")
+	fmt.Fprintln(w, response)
 }
 
 func main() {
