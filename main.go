@@ -13,21 +13,26 @@ type requestBody struct {
 	Message string `json:"message"`
 }
 
-func TaskHandler(w http.ResponseWriter, r *http.Request) {
+func CreateMessage(w http.ResponseWriter, r *http.Request) {
 	var body requestBody
 	json.NewDecoder(r.Body).Decode(&body)
 	task = body.Message
 	fmt.Fprintln(w, "OK,", task)
 }
 
-func HelloHandler(w http.ResponseWriter, r *http.Request) {
+func GetMessages(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Hello,", task)
 }
 
 func main() {
+	// Вызываем метод InitDB() из файла db.go
+	InitDB()
+
+	// Автоматическая миграция модели Message
+	DB.AutoMigrate(&Message{})
+
 	router := mux.NewRouter()
-	// наше приложение будет слушать запросы на localhost:8080/api/hello
-	router.HandleFunc("/api/hello", HelloHandler).Methods("GET")
-	router.HandleFunc("/api/hello", TaskHandler).Methods("POST")
+	router.HandleFunc("/api/messages", CreateMessage).Methods("POST")
+	router.HandleFunc("/api/messages", GetMessages).Methods("GET")
 	http.ListenAndServe(":8080", router)
 }
