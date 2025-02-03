@@ -15,13 +15,32 @@ type requestBody struct {
 
 func CreateMessage(w http.ResponseWriter, r *http.Request) {
 	var body requestBody
-	json.NewDecoder(r.Body).Decode(&body)
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		http.Error(w, "Ошибка парсинга JSON", http.StatusBadRequest)
+		return
+	}
 	task = body.Message
+	message := Message{Task: task, IsDone: true}
+	result := DB.Create(&message)
+	if result.Error != nil {
+		http.Error(w, "Ошибка сохранения в БД", http.StatusInternalServerError)
+		return
+	}
 	fmt.Fprintln(w, "OK,", task)
 }
 
 func GetMessages(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Hello,", task)
+	var requests []Message
+	result := DB.Find(&requests)
+	if result.Error != nil {
+		http.Error(w, "Ошибка при получении данных", http.StatusInternalServerError)
+		return
+	}
+
+	// Отправляем JSON-ответ
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(requests)
 }
 
 func main() {
