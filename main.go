@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -29,7 +28,13 @@ func CreateMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Ошибка сохранения в БД", http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintln(w, "OK,", task)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(message)
+	if err != nil {
+		http.Error(w, "Ошибка конвертации в json", http.StatusInternalServerError)
+		return
+	}
 }
 
 func GetMessages(w http.ResponseWriter, r *http.Request) {
@@ -40,11 +45,13 @@ func GetMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := fmt.Sprintf("Все сообщения: %+v", requests)
-
-	// Отправляем текстовый ответ
-	w.Header().Set("Content-Type", "text/plain")
-	fmt.Fprintln(w, response)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err := json.NewEncoder(w).Encode(requests)
+	if err != nil {
+		http.Error(w, "Ошибка конвертации в json", http.StatusInternalServerError)
+		return
+	}
 }
 
 func UpdateMessages(w http.ResponseWriter, r *http.Request) {
@@ -54,17 +61,32 @@ func UpdateMessages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Ошибка парсинга JSON", http.StatusBadRequest)
 		return
 	}
-	id := body.Id
-	task = body.Message
-	done := body.Status
 
-	result := DB.Model(&Message{}).Where("id = ?", id).Updates(Message{Task: task, IsDone: done})
+	result := DB.Model(&Message{}).Where("id = ?", body.Id).Updates(Message{
+		Task:   body.Message,
+		IsDone: body.Status,
+	})
 
 	if result.Error != nil {
 		http.Error(w, "Ошибка обновления в БД", http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintln(w, "OK,", id, task)
+
+	if result.RowsAffected == 0 {
+		http.Error(w, "Запись не обновлена", http.StatusNotFound)
+		return
+	}
+
+	var updatedMessage Message
+	DB.First(&updatedMessage, body.Id)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(updatedMessage)
+	if err != nil {
+		http.Error(w, "Ошибка конвертации в JSON", http.StatusInternalServerError)
+		return
+	}
 }
 
 func DeleteMessages(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +102,7 @@ func DeleteMessages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Ошибка удаления из БД", http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintln(w, "OK")
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func main() {
