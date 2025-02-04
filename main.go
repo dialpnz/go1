@@ -58,8 +58,8 @@ func UpdateMessages(w http.ResponseWriter, r *http.Request) {
 	task = body.Message
 	done := body.Status
 
-	message := Message{Id: id, Task: task, IsDone: done}
-	result := DB.Updates(&message)
+	result := DB.Model(&Message{}).Where("id = ?", id).Updates(Message{Task: task, IsDone: done})
+
 	if result.Error != nil {
 		http.Error(w, "Ошибка обновления в БД", http.StatusInternalServerError)
 		return
@@ -74,13 +74,13 @@ func DeleteMessages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Ошибка парсинга JSON", http.StatusBadRequest)
 		return
 	}
-	id := Message{Id: body.Id}
-	result := DB.Delete(&id)
+	result := DB.Delete(&Message{}, body.Id)
+
 	if result.Error != nil {
 		http.Error(w, "Ошибка удаления из БД", http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintln(w, "OK,", body.Message)
+	fmt.Fprintln(w, "OK")
 }
 
 func main() {
