@@ -9,7 +9,6 @@ import (
 var task string
 
 type requestBody struct {
-	Id      uint   `json:"id"`
 	Message string `json:"message"`
 	Status  bool   `json:"is_done"`
 }
@@ -62,7 +61,10 @@ func UpdateMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := DB.Model(&Message{}).Where("id = ?", body.Id).Updates(Message{
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	result := DB.Model(&Message{}).Where("id = ?", id).Updates(Message{
 		Task:   body.Message,
 		IsDone: body.Status,
 	})
@@ -78,7 +80,7 @@ func UpdateMessages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var updatedMessage Message
-	DB.First(&updatedMessage, body.Id)
+	DB.First(&updatedMessage, id)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -90,13 +92,9 @@ func UpdateMessages(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteMessages(w http.ResponseWriter, r *http.Request) {
-	var body requestBody
-	err := json.NewDecoder(r.Body).Decode(&body)
-	if err != nil {
-		http.Error(w, "Ошибка парсинга JSON", http.StatusBadRequest)
-		return
-	}
-	result := DB.Delete(&Message{}, body.Id)
+	vars := mux.Vars(r)
+	id := vars["id"]
+	result := DB.Delete(&Message{}, id)
 
 	if result.Error != nil {
 		http.Error(w, "Ошибка удаления из БД", http.StatusInternalServerError)
@@ -115,7 +113,7 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/api/messages", CreateMessage).Methods("POST")
 	router.HandleFunc("/api/messages", GetMessages).Methods("GET")
-	router.HandleFunc("/api/messages", UpdateMessages).Methods("PATCH")
-	router.HandleFunc("/api/messages", DeleteMessages).Methods("DELETE")
+	router.HandleFunc("/api/messages/{id}", UpdateMessages).Methods("PATCH")
+	router.HandleFunc("/api/messages/{id}", DeleteMessages).Methods("DELETE")
 	http.ListenAndServe(":8080", router)
 }
